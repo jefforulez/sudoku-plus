@@ -1,0 +1,174 @@
+#!/usr/bin/perl
+
+use strict ;
+
+use Data::Dumper ;
+
+my $rows = undef ;
+my $columns = undef ;
+my $boxes = undef ;
+
+my $puzzle_length = 0 ;
+my $puzzle_sqrt = 0 ;
+my $puzzle_sum = 0 ;
+
+MAIN:
+{
+	#
+	# parse input
+	#
+
+	my $row = 0 ;	
+	my $first_row = 0 ;
+
+	while (<DATA>)
+	{
+		# read input
+		my $line = $_ ;
+		chomp $line ;
+	
+		# rows
+		push @{ $rows }, [ split /,/, $line ] ;
+	
+		# box size
+		if ( $first_row != 1 )
+		{
+			$puzzle_length = $#{ $rows->[ $row ] } + 1 ;
+			$puzzle_sqrt   = sqrt( $puzzle_length ) ;
+			$puzzle_sum    = ( $puzzle_length * ( $puzzle_length + 1 ) ) / 2 ;
+
+			if ( $puzzle_sqrt != int( $puzzle_sqrt ) ) {
+				puzzle_error( "INVALID FIRST ROW: puzzle_length => $puzzle_length, puzzle_sqrt => $puzzle_sqrt" ) ;
+			}
+
+			if ( $ARGV[0] )
+			{
+				print "- puzzle_length: $puzzle_length\n" ;
+				print "- puzzle_sqrt: $puzzle_sqrt\n" ;
+				print "- puzzle_sum: $puzzle_sum\n" ;		
+			}
+			
+			$first_row = 1 ;
+		}
+		
+		# columns
+		my $col = 0 ;
+		for ( my $i = 0 ; $i <= $#{ $rows->[ $row ] } ; ++$i )
+		{
+			my $n = $rows->[ $row ][ $i ] ;
+		
+			push @{ $columns->[ $col ] }, $n ;
+			
+			# boxes
+			my $c = int ( $col / $puzzle_sqrt ) + ( int( $row / $puzzle_sqrt ) * $puzzle_sqrt ) ;
+			push @{ $boxes->[ $c ] }, $n ;
+			
+			++$col ;
+		}
+		
+		++$row ;
+	}
+
+	#
+	# validate rows
+	#
+	for ( my $i = 0 ; $i < $#{ $rows } ; ++$i )
+	{
+		if ( $#{ $rows->[ $i ] } + 1 != $puzzle_length ) {
+			puzzle_error( "INVALID ROW LENGTH", { row => $i } ) ;
+		}
+	
+		my $sum = 0 ;
+		foreach my $n ( @{ $rows->[ $i ] } )
+		{
+			$sum += $n ;
+		}
+		if ( $sum != $puzzle_sum ) {
+			puzzle_error( "INVALID ROW VALUES", { row => $i } ) ;
+		}
+	}
+
+	#
+	# validate columns
+	#
+	for ( my $i = 0 ; $i < $#{ $columns } ; ++$i )
+	{
+		if ( $#{ $columns->[ $i ] } + 1 != $puzzle_length ) {
+			puzzle_error( "INVALID COLUMN LENGTH", { col => $i } ) ;
+		}
+
+		my $sum = 0 ;
+		foreach my $n ( @{ $columns->[ $i ] } )
+		{
+			$sum += $n ;
+		}
+		if ( $sum != $puzzle_sum ) {
+			puzzle_error( "INVALID COLUMN VALUES", { col => $i } ) ;
+		}
+	}
+		
+	#
+	# validate boxes
+	#
+	for ( my $i = 0 ; $i < $#{ $boxes } ; ++$i )
+	{
+		if ( $#{ $boxes->[ $i ] } + 1 != $puzzle_length ) {
+			puzzle_error( "INVALID BOX LENGTH", { box => $i } ) ;
+		}
+
+		my $sum = 0 ;
+		foreach my $n ( @{ $boxes->[ $i ] } )
+		{
+			$sum += $n ;
+		}
+		if ( $sum != $puzzle_sum ) {
+			puzzle_error( "INVALID BOX VALUES", { box => $i } ) ;
+		}
+	}
+
+	if ( $ARGV[0] )
+	{
+		print Dumper( { rows => $rows } ) ;
+		print Dumper( { columns => $columns } ) ;
+		print Dumper( { boxes => $boxes }  ) ;
+	}
+
+	print "+ sudoku plus solution is valid\n" ;
+
+	exit ;
+}
+
+sub puzzle_error
+{
+	my ( $error, $indices ) = @_ ;
+
+	if ( ! defined $indices ) {
+		die $error ;
+	}
+	
+	if ( exists $indices->{'row'} ) 
+	{
+		my $row = $indices->{'row'} ;
+		$error .= ", row(" . ( $row + 1 ) . ") => " . ( join ',', @{ $rows->[ $row ] } ) ;
+	}
+
+	if ( exists $indices->{'col'} ) 
+	{
+		my $col = $indices->{'col'} ;
+		$error .= ", col(" . ( $col + 1 ) . ") => " . ( join ',', @{ $columns->[ $col ] } ) ;
+	}
+
+	if ( exists $indices->{'box'} ) 
+	{
+		my $box = $indices->{'box'} ;
+		$error .= ", box(" . ( $box + 1 ) . ") => " . ( join ',', @{ $boxes->[ $box ] } ) ;
+	}
+
+	die $error ;
+}
+
+__DATA__
+1,4,2,3
+2,3,1,4
+4,2,3,1
+3,1,4,2
